@@ -48,18 +48,62 @@ def ateliers(machines: dict) -> set:
     # Comprehension d'ensemble en une seule ligne
     return {m["atelier"] for m in machines.values()}
 # --- Étape 3 : valider une ligne (exceptions, tuples) -------------------------------------------
+import math
+from datetime import datetime
+from exceptions import ReleveInvalide
+
+
 def lire_nombre(texte: str, champ: str, numero: int) -> float:
-    """Convertit "52,3" en 52.3 ; lève ReleveInvalide si la valeur est vide ou non numérique."""
-    raise NotImplementedError("à compléter")
-
-
-def parser_releve(brut: dict[str, str], numero: int, machines: dict[str, dict]) -> Releve:
-    """Transforme une ligne brute du CSV (dictionnaire de textes) en relevé typé.
-
-    Lève ReleveInvalide (avec le numéro de ligne et le champ fautif) au premier problème.
+    """Valide et convertit une chaîne en float.
+    
+    Gère les virgules décimales, les champs vides, les valeurs non numériques et nan/inf.
     """
-    raise NotImplementedError("à compléter")
+    texte_nettoye = texte.strip().replace(",", ".")
+    
+    if not texte_nettoye:
+        raise ReleveInvalide("valeur manquante", numero, champ)
+        
+    try:
+        valeur = float(texte_nettoye)
+    except ValueError:
+        # Ajout de l'espace avant les deux-points
+        raise ReleveInvalide(f"valeur non numérique : {texte.strip()!r}", numero, champ)
+        
+    if math.isnan(valeur) or math.isinf(valeur):
+        # Ajout de l'espace avant les deux-points
+        raise ReleveInvalide(f"valeur non finie : {texte.strip()!r}", numero, champ)
+        
+    return valeur
 
+
+def parser_releve(brut: dict, numero: int, machines: dict) -> tuple:
+    """Valide et convertit un dictionnaire de ligne CSV en tuple (machine, horodatage, temp, vib)."""
+    # 1. Validation de la machine
+    m_raw = brut.get("machine", "").strip()
+    m_upper = m_raw.upper()
+    if m_upper not in machines:
+        # Ajout de l'espace avant les deux-points
+        raise ReleveInvalide(f"machine inconnue : {m_raw!r}", numero, "machine")
+        
+    # 2. Validation de l'horodatage
+    h_raw = brut.get("horodatage", "").strip()
+    try:
+        dt = datetime.fromisoformat(h_raw)
+    except ValueError:
+        # Ajout de l'espace avant les deux-points
+        raise ReleveInvalide(f"horodatage invalide : {h_raw!r}", numero, "horodatage") from None
+        
+    # 3. Validation de la température et de la vibration
+    temp = lire_nombre(brut.get("temperature", ""), "temperature", numero)
+    vib = lire_nombre(brut.get("vibration", ""), "vibration", numero)
+    
+    # 4. Vérification vibration non négative
+    if vib < 0:
+        val_str = brut.get("vibration", "").strip()
+        # Ajout de l'espace avant les deux-points
+        raise ReleveInvalide(f"vibration négative : {val_str}", numero, "vibration")
+        
+    return (m_upper, dt, temp, vib)
 
 # --- Étape 4 : lire le fichier (CSV, générateur, collecte des erreurs) ---------------------------
 def lignes_csv(chemin: Path):
