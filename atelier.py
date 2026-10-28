@@ -15,17 +15,38 @@ Releve = tuple[str, datetime, float, float]
 
 
 # --- Étape 1 : le référentiel des machines (JSON, dictionnaires, ensembles) --------------------
-def charger_machines(chemin: Path) -> dict[str, dict]:
-    """Lit machines.json et renvoie un dictionnaire {identifiant: fiche de la machine}.
+import json
+from pathlib import Path
+from exceptions import FichierInvalide
 
-    Lève FichierInvalide si un identifiant apparaît deux fois.
+def charger_machines(chemin: Path) -> dict:
     """
-    raise NotImplementedError("à compléter")
+    Lit le fichier JSON des machines et renvoie un dictionnaire {id: fiche}.
+    Lève FichierInvalide si un identifiant est présent plusieurs fois.
+    """
+    # 1. Ouverture du fichier JSON en UTF-8
+    with open(chemin, "r", encoding="utf-8") as f:
+        donnees = json.load(f)
+    
+    machines = {}
+    
+    # 2. Parcours de la liste et construction du dictionnaire
+    for fiche in donnees:
+        m_id = fiche["id"]
+        # Vérification des doublons
+        if m_id in machines:
+            raise FichierInvalide(f"identifiant en double: {m_id}")
+        machines[m_id] = fiche
+        
+    return machines
 
 
-def ateliers(machines: dict[str, dict]) -> set[str]:
-    """L'ensemble des ateliers où se trouvent les machines."""
-    raise NotImplementedError("à compléter")
+def ateliers(machines: dict) -> set:
+    """
+    Renvoie l'ensemble (set) des ateliers uniques sans doublons.
+    """
+    # Comprehension d'ensemble en une seule ligne
+    return {m["atelier"] for m in machines.values()}
 
 
 # --- Étape 3 : valider une ligne (exceptions, tuples) -------------------------------------------
