@@ -233,13 +233,44 @@ def top_vibrations(releves: list[Releve], n: int = 3) -> list[Releve]:
 # --- Étape 7 : le rapport JSON ------------------------------------------------------------------
 def construire_rapport(releves: list[Releve], erreurs: list[ReleveInvalide], machines: dict[str, dict]) -> dict:
     """Le rapport sous forme d'un dictionnaire prêt pour json.dump (pas de datetime, pas d'ensemble)."""
-    raise NotImplementedError("à compléter")
+    moy = moyennes(releves)
+    
+    # Formatage des moyennes pour le rapport (machine: {"temperature": ..., "vibration": ...})
+    moyennes_formatees = {
+        m: {"temperature": t, "vibration": v} 
+        for m, (t, v) in sorted(moy.items())
+    }
+    
+    # Formatage des alertes (heure au format "09:00")
+    liste_alt = alertes(releves, machines)
+    alertes_formatees = [
+        {
+            "machine": m,
+            "heure": h.strftime("%H:%M"),
+            "motif": motif
+        }
+        for m, h, motif in liste_alt
+    ]
+    
+    # Classement : identifiants des machines ayant au moins une alerte, dans l'ordre du classement
+    classement_brut = classement(releves, machines)
+    machines_a_surveiller = [m for m, nb in classement_brut if nb > 0]
+    
+    return {
+        "releves_valides": len(releves),
+        "lignes_rejetees": len(erreurs),
+        "moyennes": moyennes_formatees,
+        "alertes": alertes_formatees,
+        "classement": machines_a_surveiller,
+        "machines_silencieuses": sorted(list(machines_silencieuses(releves, machines)))
+    }
 
 
 def ecrire_rapport(rapport: dict, chemin: Path) -> None:
     """Écrit le rapport en JSON indenté, accents conservés."""
-    raise NotImplementedError("à compléter")
-
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with open(chemin, "w", encoding="utf-8") as f:
+        json.dump(rapport, f, ensure_ascii=False, indent=2)
 
 # --- Étape 8 (à la maison) : le journal des événements (expressions régulières) ------------------
 MOTIF_EVENEMENT = re.compile(r"à compléter")   # étape 8
