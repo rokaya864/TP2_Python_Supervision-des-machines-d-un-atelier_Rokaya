@@ -157,35 +157,77 @@ def ecrire_rejets(erreurs: list, chemin: Path) -> None:
         for err in erreurs:
             writer.writerow([err.ligne, err.champ, err.message])
 # --- Étape 5 : analyser (dictionnaires, compréhensions) ------------------------------------------
+# --- Étape 5 : analyser (dictionnaires, compréhensions) ------------------------------------------
 def par_machine(releves: list[Releve]) -> dict[str, list[Releve]]:
     """Regroupe les relevés par machine : {machine: [relevés dans l'ordre du fichier]}."""
-    raise NotImplementedError("à compléter")
+    resultat = {}
+    for r in releves:
+        machine = r[0]
+        resultat.setdefault(machine, []).append(r)
+    return resultat
 
 
 def moyennes(releves: list[Releve]) -> dict[str, tuple[float, float]]:
     """{machine: (température moyenne arrondie à 0,1 ; vibration moyenne arrondie à 0,01)}."""
-    raise NotImplementedError("à compléter")
+    groupes = par_machine(releves)
+    resultat = {}
+    for machine, liste in groupes.items():
+        somme_temp = sum(r[2] for r in liste)
+        somme_vib = sum(r[3] for r in liste)
+        nb = len(liste)
+        temp_moy = round(somme_temp / nb, 1)
+        vib_moy = round(somme_vib / nb, 2)
+        resultat[machine] = (temp_moy, vib_moy)
+    return resultat
 
 
 def alertes(releves: list[Releve], machines: dict[str, dict]) -> list[tuple[str, datetime, str]]:
     """Liste des dépassements de seuil (machine, horodatage, motif), triée par horodatage puis machine."""
-    raise NotImplementedError("à compléter")
+    liste_alertes = []
+    
+    for machine, horodatage, temperature, vibration in releves:
+        fiche = machines.get(machine)
+        if not fiche:
+            continue
+        
+        temp_max = fiche["temp_max"]
+        vib_max = fiche["vib_max"]
+        
+        # Le seuil est strict : une valeur égale au seuil n'est pas une alerte
+        if temperature > temp_max:
+            motif = f"température {temperature} > {temp_max}"
+            liste_alertes.append((machine, horodatage, motif))
+            
+        if vibration > vib_max:
+            motif = f"vibration {vibration} > {vib_max}"
+            liste_alertes.append((machine, horodatage, motif))
+            
+    # Tri par horodatage, puis par machine
+    liste_alertes.sort(key=lambda x: (x[1], x[0]))
+    return liste_alertes
 
 
 def machines_silencieuses(releves: list[Releve], machines: dict[str, dict]) -> set[str]:
     """Les machines du référentiel qui n'ont envoyé aucun relevé valide (capteur en panne ?)."""
-    raise NotImplementedError("à compléter")
-
-
+    machines_avec_releves = {r[0] for r in releves}
+    return set(machines.keys()) - machines_avec_releves
+# --- Étape 6 : trier ---------------------------------------------------------------------------
 # --- Étape 6 : trier ---------------------------------------------------------------------------
 def classement(releves: list[Releve], machines: dict[str, dict]) -> list[tuple[str, int]]:
     """[(machine, nombre d'alertes)] pour TOUTES les machines, la plus alertée d'abord, puis par identifiant."""
-    raise NotImplementedError("à compléter")
+    compteurs = {m: 0 for m in machines}
+    liste_alt = alertes(releves, machines)
+    
+    for machine, _, _ in liste_alt:
+        if machine in compteurs:
+            compteurs[machine] += 1
+            
+    return sorted(compteurs.items(), key=lambda item: (-item[1], item[0]))
 
 
 def top_vibrations(releves: list[Releve], n: int = 3) -> list[Releve]:
     """Les n relevés de plus forte vibration, du plus fort au plus faible."""
-    raise NotImplementedError("à compléter")
+    return sorted(releves, key=lambda r: r[3], reverse=True)[:n]
 
 
 # --- Étape 7 : le rapport JSON ------------------------------------------------------------------
