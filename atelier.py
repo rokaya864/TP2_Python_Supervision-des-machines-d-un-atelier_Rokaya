@@ -47,8 +47,6 @@ def ateliers(machines: dict) -> set:
     """
     # Comprehension d'ensemble en une seule ligne
     return {m["atelier"] for m in machines.values()}
-
-
 # --- Étape 3 : valider une ligne (exceptions, tuples) -------------------------------------------
 def lire_nombre(texte: str, champ: str, numero: int) -> float:
     """Convertit "52,3" en 52.3 ; lève ReleveInvalide si la valeur est vide ou non numérique."""

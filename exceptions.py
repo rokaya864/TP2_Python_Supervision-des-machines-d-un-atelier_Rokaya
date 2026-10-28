@@ -1,16 +1,21 @@
-"""Les erreurs métier de l'application de supervision."""
-
-
 class AtelierError(Exception):
-    """Classe mère de toutes les erreurs de l'application."""
+    """Classe de base pour toutes les exceptions du projet."""
+    pass
 
 
 class FichierInvalide(AtelierError):
-    """Le fichier entier est inutilisable (colonnes manquantes, identifiants en double...)."""
+    """Signale un fichier entier inutilisable."""
+    pass
 
 
 class ReleveInvalide(AtelierError):
-    """Une ligne de relevé est invalide ; on garde le numéro de ligne et le champ fautif."""
+    """Signale une erreur sur une ligne spécifique d'un fichier de relevés."""
 
     def __init__(self, message: str, ligne: int, champ: str):
-        raise NotImplementedError("à compléter")
+        """Initialise l'exception avec les détails de la ligne invalide."""
+        self.message = message
+        self.ligne = ligne
+        self.champ = champ
+        
+        # Format exact attendu par les tests (sans apostrophes autour du champ)
+        super().__init__(f"ligne {ligne}, champ {champ}: {message}")
