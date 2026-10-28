@@ -106,25 +106,56 @@ def parser_releve(brut: dict, numero: int, machines: dict) -> tuple:
     return (m_upper, dt, temp, vib)
 
 # --- Étape 4 : lire le fichier (CSV, générateur, collecte des erreurs) ---------------------------
+import csv
+from pathlib import Path
+from exceptions import FichierInvalide, ReleveInvalide
+
+# Colonnes obligatoires attendues dans le CSV
+COLONNES = ["machine", "horodatage", "temperature", "vibration"]
+
+
 def lignes_csv(chemin: Path):
-    """Générateur : produit (numero, ligne_brute) pour chaque ligne de données du CSV.
-
-    Le numéro est celui de la ligne dans le fichier (l'en-tête est la ligne 1).
-    Lève FichierInvalide si une colonne attendue manque.
-    """
-    raise NotImplementedError("à compléter")
-
-
-def lire_releves(chemin: Path, machines: dict[str, dict]) -> tuple[list[Releve], list[ReleveInvalide]]:
-    """Lit tout le fichier et renvoie (releves_valides, erreurs) sans s'arrêter sur une ligne invalide."""
-    raise NotImplementedError("à compléter")
-
-
-def ecrire_rejets(erreurs: list[ReleveInvalide], chemin: Path) -> None:
-    """Écrit les lignes rejetées dans un CSV ligne;champ;message, lisible par Excel."""
-    raise NotImplementedError("à compléter")
+    """Générateur qui lit le CSV et produit (numero_ligne, brut_dict)."""
+    with open(chemin, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        
+        # Vérification des colonnes attendues et identification des colonnes manquantes
+        if reader.fieldnames is None:
+            raise FichierInvalide("fichier CSV vide ou invalide")
+            
+        manquantes = [col for col in COLONNES if col not in reader.fieldnames]
+        if manquantes:
+            raise FichierInvalide(f"colonnes manquantes: {', '.join(manquantes)}")
+            
+        for i, ligne in enumerate(reader, start=2):
+            yield (i, ligne)
 
 
+def lire_releves(chemin: Path, machines: dict) -> tuple[list, list]:
+    """Lit les relevés CSV et les sépare en relevés valides et erreurs."""
+    releves = []
+    erreurs = []
+    
+    for numero, brut in lignes_csv(chemin):
+        try:
+            releve = parser_releve(brut, numero, machines)
+            releves.append(releve)
+        except ReleveInvalide as err:
+            erreurs.append(err)
+            
+    return (releves, erreurs)
+
+
+def ecrire_rejets(erreurs: list, chemin: Path) -> None:
+    """Écrit le fichier CSV rejets.csv contenant les erreurs détectées."""
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(chemin, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(["ligne", "champ", "message"])
+        
+        for err in erreurs:
+            writer.writerow([err.ligne, err.champ, err.message])
 # --- Étape 5 : analyser (dictionnaires, compréhensions) ------------------------------------------
 def par_machine(releves: list[Releve]) -> dict[str, list[Releve]]:
     """Regroupe les relevés par machine : {machine: [relevés dans l'ordre du fichier]}."""
