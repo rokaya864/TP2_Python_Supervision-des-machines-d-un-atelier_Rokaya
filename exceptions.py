@@ -17,5 +17,5 @@ class ReleveInvalide(AtelierError):
         self.ligne = ligne
         self.champ = champ
         
-        # Format exact attendu par les tests (sans apostrophes autour du champ)
-        super().__init__(f"ligne {ligne}, champ {champ}: {message}")
+        # Format exact exigé par test_etape2.py
+        super().__init__(f"ligne {ligne}, champ '{champ}' : {message}")
