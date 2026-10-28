@@ -273,17 +273,44 @@ def ecrire_rapport(rapport: dict, chemin: Path) -> None:
         json.dump(rapport, f, ensure_ascii=False, indent=2)
 
 # --- Étape 8 (à la maison) : le journal des événements (expressions régulières) ------------------
-MOTIF_EVENEMENT = re.compile(r"à compléter")   # étape 8
+# --- Étape 8 : Journal des événements (expressions régulières) -----------------------------------
+MOTIF_EVENEMENT = re.compile(
+    r"(?P<date>\d{4}-\d{2}-\d{2})\s+"
+    r"(?P<heure>\d{2}:\d{2}:\d{2})\s+"
+    r"\[(?P<machine>M-\d{2})\]\s+"
+    r"(?P<type>[A-Z]+)\s+"
+    r"code=(?P<code>[A-Z]\d{2})"
+    r"(?:\s+duree=(?P<duree>\d+))?"
+)
 
 
 def lire_evenements(chemin: Path):
-    """Générateur : un dictionnaire par ligne valide du journal, les lignes mal formées sont sautées.
-
-    Clés : machine, type, code, heure, duree (entier en minutes, ou None si absente).
-    """
-    raise NotImplementedError("à compléter")
+    """Générateur : lit le journal ligne par ligne et produit un dictionnaire par événement valide."""
+    with open(chemin, "r", encoding="utf-8") as f:
+        for ligne in f:
+            ligne_propre = ligne.strip()
+            match = MOTIF_EVENEMENT.fullmatch(ligne_propre)
+            if match:
+                donnees = match.groupdict()
+                # Conversion de la durée en int si elle est présente, sinon None
+                duree_str = donnees.get("duree")
+                duree = int(duree_str) if duree_str is not None else None
+                
+                yield {
+                    "machine": donnees["machine"],
+                    "type": donnees["type"],
+                    "code": donnees["code"],
+                    "heure": donnees["heure"],
+                    "duree": duree
+                }
 
 
 def temps_arret(evenements) -> dict[str, int]:
-    """Durée totale des ARRET par machine, en minutes."""
-    raise NotImplementedError("à compléter")
+    """Calcule la durée totale des événements ARRET par machine, en minutes."""
+    totaux = {}
+    for ev in evenements:
+        if ev["type"] == "ARRET" and ev["duree"] is not None:
+            machine = ev["machine"]
+            duree = ev["duree"]
+            totaux[machine] = totaux.get(machine, 0) + duree
+    return totaux
